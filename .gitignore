@@ -177,3 +177,8 @@ cython_debug/
 *.pth
 *.prototxt
 *.caffemodel
+
+# misc
+*.json
+*.exe
+*.pdb
