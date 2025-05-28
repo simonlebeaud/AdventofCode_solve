@@ -1,18 +1,100 @@
+use std::collections::HashMap;
+use std::process::exit;
 use std::fs;
 
-fn compute_score_str(s: &str) -> u64 {
-    let mut out = 0;
-    for c in s.chars() {
-        out = ((out + c as u64 ) * 17)%256;
+
+struct Lens {
+    label: String,
+    lens_focusing_power: u32,
+}
+
+fn get_input_arr() -> Vec<String> {
+    let file = fs::read_to_string("input.txt");
+    if file.is_err() {
+        println!("File not found...");
+        exit(0);
     }
-    out
+    let arr: Vec<String> = file.ok().unwrap().trim().split(',').map(|x| String::from(x)).collect();
+    
+    return arr;
+}
+
+fn get_hash(word: &str) -> u32 {
+    let mut current_value = 0;
+
+    for letter in word.chars() {
+        current_value += letter as u32;
+        current_value *= 17;
+        current_value %= 256;
+    }
+
+    return current_value;
+}
+
+fn remove_entry(lens_vector: &mut Vec<Lens>, original_word: &str) {
+    for index in 0..lens_vector.len() {
+        if lens_vector[index].label == original_word {
+            lens_vector.remove(index);
+            return;
+        }
+    }
+
+}
+
+fn add_lens(lens_vector: &mut Vec<Lens>, original_word: &str, lens_power: u32) {
+    for lens in &mut *lens_vector {
+        if lens.label == original_word {
+            lens.lens_focusing_power = lens_power;
+            return
+        }
+    }
+
+    lens_vector.push(Lens { label: String::from(original_word), lens_focusing_power: lens_power })
+}
+
+fn fill_boxes(word: &str, boxes: &mut HashMap<u32, Vec<Lens>>) {
+    if word.contains("-") {
+        let original_word = word.split("-").collect::<Vec<&str>>()[0];
+        let hash = get_hash(original_word);
+        boxes.entry(hash).and_modify(|vect| remove_entry(vect, original_word));
+    } else if word.contains("=") {
+        let original_word = word.split("=").collect::<Vec<&str>>()[0];
+        let lens_power: u32 = word.split("=").collect::<Vec<&str>>()[1].parse().unwrap();
+        let hash = get_hash(original_word);
+        add_lens(boxes.entry(hash).or_insert(Vec::new()), original_word, lens_power);
+    }
+}
+
+fn get_total_focusing_power(boxes: &HashMap<u32, Vec<Lens>>) -> u32 {
+    let mut sum_of_powers = 0;
+
+    for (k, v) in boxes {
+        let mut counter = 1;
+        for lens in v {
+            sum_of_powers += (k + 1) * lens.lens_focusing_power * counter;
+            counter += 1;
+        }
+    }
+
+    return sum_of_powers;
 }
 
 fn main() {
-    let input = fs::read_to_string("input.txt").unwrap();
-    let mut total = 0;
-    for i in input.trim().split(',') {
-        total += compute_score_str(i);
+    //Input parsing
+    let arr: Vec<String> = get_input_arr();
+    let arr_str: Vec<&str> = arr.iter().map(|x| x.as_str()).collect();
+    let mut input_vector: Vec<&str> = Vec::new();
+    for line in arr_str {
+        input_vector.extend::<Vec<&str>>(line.split(",").collect());
     }
-    println!("{}", total);
+
+    input_vector.iter_mut().for_each(|x| *x = x.trim());
+
+    let mut boxes: HashMap<u32, Vec<Lens>> = HashMap::new();
+
+    for word in input_vector {
+        fill_boxes(word, &mut boxes);
+    }
+
+    println!("Sum of focusing power: {}", get_total_focusing_power(&boxes));
 }
